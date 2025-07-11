@@ -1,0 +1,7 @@
+mood,message_keywords,recommended_genre
+happy,happy|joyful|glad,comedy
+sad,sad|depressed|unhappy,drama
+excited,excited|energetic|active,action
+romantic,romantic|love|affectionate,romance
+bored,bored|dull|tedious,sci-fi
+scared,scared|afraid|anxious,horror
