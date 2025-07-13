@@ -17,11 +17,11 @@ class ScreeningResource extends JsonResource
         return [
             'id' => $this->id,
             'movie' => new MovieResource($this->movie),
-            //'cinema' => new CinemaResource($this->cinema),
-            //'hall' => new HallResource($this->hall),
+            //\'cinema' => new CinemaResource($this->cinema),
+            'hall' => new HallResource($this->hall),
 
             'cinema' => $this->cinema,
-            'hall' => $this->hall->name,
+
             'screening_time' => $this->screening_time,
             'language' => $this->language,
         ];

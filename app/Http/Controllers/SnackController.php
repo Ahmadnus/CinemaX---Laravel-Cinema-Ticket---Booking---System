@@ -2,12 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreSnackRequest;
+use App\Http\Requests\UpdateSnackRequest;
 use App\Services\SnackService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
+
+
 
 
 class SnackController extends Controller
 {
+    use ApiResponse;
+
     protected $snackService;
 
     public function __construct(SnackService $snackService)
@@ -18,45 +25,37 @@ class SnackController extends Controller
     public function index()
     {
         $snacks = $this->snackService->getAll();
-        return response()->json($snacks);
+        return $this->successResponse($snacks);
     }
 
     public function show(int $id)
     {
         $snack = $this->snackService->getById($id);
+
         if (!$snack) {
-            return response()->json(['message' => 'Snack not found'], 404);
+            return $this->errorResponse('Snack not found', 404);
         }
-        return response()->json($snack);
+
+        return $this->successResponse($snack);
     }
 
-    public function store(Request $request)
+    public function store(StoreSnackRequest $request)
     {
-        $validated = $request->validate([
-            'name'  => 'required|string|max:255',
-            'price' => 'required|numeric|min:0',
-            'image' => 'nullable|string|max:255',
-        ]);
-
+        $validated = $request->validated();
         $snack = $this->snackService->create($validated);
-        return response()->json($snack, 201);
+        return $this->successResponse($snack, 'Snack created successfully', 201);
     }
 
-    public function update(Request $request, int $id)
+    public function update(UpdateSnackRequest $request, int $id)
     {
-        $validated = $request->validate([
-            'name'  => 'sometimes|required|string|max:255',
-            'price' => 'sometimes|required|numeric|min:0',
-            'image' => 'nullable|string|max:255',
-        ]);
-
+        $validated = $request->validated();
         $snack = $this->snackService->update($id, $validated);
 
         if (!$snack) {
-            return response()->json(['message' => 'Snack not found'], 404);
+            return $this->errorResponse('Snack not found', 404);
         }
 
-        return response()->json($snack);
+        return $this->successResponse($snack, 'Snack updated successfully');
     }
 
     public function destroy(int $id)
@@ -64,9 +63,9 @@ class SnackController extends Controller
         $deleted = $this->snackService->delete($id);
 
         if (!$deleted) {
-            return response()->json(['message' => 'Snack not found'], 404);
+            return $this->errorResponse('Snack not found', 404);
         }
 
-        return response()->json(['message' => 'Snack deleted successfully']);
+        return $this->successResponse(null, 'Snack deleted successfully');
     }
 }

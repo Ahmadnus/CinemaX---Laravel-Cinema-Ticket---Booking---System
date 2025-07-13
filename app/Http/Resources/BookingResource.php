@@ -14,6 +14,17 @@ class BookingResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return parent::toArray($request);
+        return [
+            'id'             => $this->id,
+            'user_id'        => $this->user_id,
+            'seats' => ScreeningResource::collection($this->whenLoaded('screening')),
+            'total_price'    => $this->total_price,
+            'status'         => $this->status,
+            'payment_method' => $this->payment_method,
+            'created_at'     => $this->created_at?->toDateTimeString(),
+
+            'seats' => SeatResource::collection($this->whenLoaded('seats')),
+            'snacks' => SnackResource::collection($this->whenLoaded('snacks')),
+        ];
     }
 }

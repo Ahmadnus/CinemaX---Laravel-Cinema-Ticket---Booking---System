@@ -5,12 +5,17 @@ namespace App\Http\Controllers\api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreMovieReviewRequest;
 use App\Http\Requests\UpdateMovieReviewRequest;
+use App\Http\Resources\MovieReviewResource;
 use App\Models\MovieReview;
 use App\Services\MovieReviewService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 
-class MovieReviewController extends Controller
+
+    class MovieReviewController extends Controller
 {
+    use ApiResponse;
+
     protected $service;
 
     public function __construct(MovieReviewService $service)
@@ -20,30 +25,31 @@ class MovieReviewController extends Controller
 
     public function index()
     {
-        return response()->json($this->service->getAll());
+        $reviews = $this->service->getAll();
+        return $this->successResponse(MovieReviewResource::collection($reviews));
     }
 
     public function store(StoreMovieReviewRequest $request)
     {
         $review = $this->service->create($request->validated());
-        return response()->json($review, 201);
+        return $this->successResponse(new MovieReviewResource($review), 'Review created successfully', 201);
     }
 
     public function show(MovieReview $movieReview)
     {
-        return response()->json($movieReview->load('user', 'movie'));
+        return $this->successResponse(new MovieReviewResource($movieReview->load('user', 'movie')));
     }
 
     public function update(UpdateMovieReviewRequest $request, MovieReview $movieReview)
     {
         $updated = $this->service->update($movieReview, $request->validated());
-        return response()->json($updated);
+        return $this->successResponse(new MovieReviewResource($updated), 'Review updated successfully');
     }
 
     public function destroy(MovieReview $movieReview)
     {
         $this->service->delete($movieReview);
-        return response()->json(['message' => 'Review deleted']);
+        return $this->successResponse(null, 'Review deleted successfully');
     }
-
 }
+

@@ -5,12 +5,16 @@ namespace App\Http\Controllers\api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreHallRequest;
 use App\Http\Requests\UpdateHallRequest;
+use App\Http\Resources\HallResource;
 use App\Models\Hall;
 use App\Services\HallService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\Request;
 
 class HallController extends Controller
 {
+    use ApiResponse;
+
     protected $hallService;
 
     public function __construct(HallService $hallService)
@@ -20,29 +24,30 @@ class HallController extends Controller
 
     public function index()
     {
-        return response()->json($this->hallService->getAll());
+        $halls = $this->hallService->getAll();
+        return $this->successResponse(HallResource::collection($halls));
     }
 
     public function store(StoreHallRequest $request)
     {
         $hall = $this->hallService->create($request->validated());
-        return response()->json($hall, 201);
+        return $this->successResponse(new HallResource($hall), 'Hall created successfully', 201);
     }
 
     public function show(Hall $hall)
     {
-        return response()->json($hall);
+        return $this->successResponse(new HallResource($hall));
     }
 
     public function update(UpdateHallRequest $request, Hall $hall)
     {
         $updated = $this->hallService->update($hall, $request->validated());
-        return response()->json($updated);
+        return $this->successResponse(new HallResource($updated), 'Hall updated successfully');
     }
 
     public function destroy(Hall $hall)
     {
         $this->hallService->delete($hall);
-        return response()->json(['message' => 'Hall deleted']);
+        return $this->successResponse(null, 'Hall deleted successfully');
     }
 }
