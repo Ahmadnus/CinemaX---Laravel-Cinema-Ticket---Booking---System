@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Screening;
+use App\Models\Seat;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 class StoreBookingRequest extends FormRequest
 {
@@ -31,4 +34,22 @@ class StoreBookingRequest extends FormRequest
             'payment_method'    => 'required|string|in:cash,card,apple_pay',
         ];
     }
-}
+
+public function withValidator($validator)
+{
+    $validator->after(function ($validator) {
+        $screeningId = $this->input('screening_id');
+        $seatIds = $this->input('seat_ids');
+
+        if (!$screeningId || !$seatIds || !is_array($seatIds)) return;
+
+        $invalidSeats = Seat::whereIn('id', $seatIds)
+            ->where('screening_id', '!=', $screeningId)
+            ->pluck('id')
+            ->toArray();
+
+        if (!empty($invalidSeats)) {
+            $validator->errors()->add('seat_ids', trans('Some selected seats do not belong to the selected screening.'));
+        }
+    });
+}    }

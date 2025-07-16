@@ -71,3 +71,6 @@ Route::prefix('movie-reviews')->controller(MovieReviewController::class)->group(
     Route::put('{movieReview}', 'update');
     Route::delete('{movieReview}', 'destroy');
 });
+Route::get('/moviess/search-tmdb', [MovieController::class, 'fetchFromTMDb']);
+Route::post('/moviess/store-from-tmdb', [MovieController::class, 'storeFromTMDb']);
+Route::get('/admin/moviesss/search-tmdb', [MovieController::class, 'searchFromTMDb']);

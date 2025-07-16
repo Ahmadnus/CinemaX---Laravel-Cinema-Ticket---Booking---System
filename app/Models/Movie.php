@@ -19,8 +19,8 @@ class Movie extends Model implements HasMedia
     ];
     public function registerMediaCollections(): void
     {
-        $this->addMediaCollection('posters')->singleFile();   // صورة البوستر (واحدة فقط)
-        $this->addMediaCollection('trailers')->singleFile();  // فيديو التريلر (واحد فقط)
+        $this->addMediaCollection('posters')->singleFile();
+        $this->addMediaCollection('trailers')->singleFile();
     }
 
     public function screenings() { return $this->hasMany(Screening::class); }

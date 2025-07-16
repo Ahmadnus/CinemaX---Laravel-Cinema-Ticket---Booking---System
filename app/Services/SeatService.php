@@ -31,19 +31,24 @@ class SeatService
     {
         $seats = [];
 
-        foreach ($seatsData as $seat) {
-            $seats[] = [
-                'screening_id' => $screeningId,
-                'row' => $seat['row'],
-                'number' => $seat['number'],
-                'price' => $seat['price'],
-                'is_reserved' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
+        foreach ($seatsData as $seatGroup) {
+            $row = $seatGroup['row'];
+            $count = $seatGroup['count'];
+            $price = $seatGroup['price'];
+
+            for ($i = 1; $i <= $count; $i++) {
+                $seats[] = [
+                    'screening_id' => $screeningId,
+                    'row' => $row,
+                    'number' => $i,
+                    'price' => $price,
+                    'is_reserved' => false,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
         }
 
-        // إدخال دفعة مقاعد دفعة واحدة
         Seat::insert($seats);
     }
 
@@ -54,9 +59,33 @@ class SeatService
      * @param bool $reserved
      * @return int عدد المقاعد التي تم تحديثها
      */
-    public function updateSeatsReservation(array $seatIds, bool $reserved): int
+    public function updateSeats(int $screeningId, array $seatsData): void
     {
-        return Seat::whereIn('id', $seatIds)->update(['is_reserved' => $reserved]);
+        // 1. احذف الكراسي السابقة لهذا العرض
+        Seat::where('screening_id', $screeningId)->delete();
+
+        // 2. أضف الكراسي الجديدة
+        $seats = [];
+
+        foreach ($seatsData as $seatGroup) {
+            $row = $seatGroup['row'];
+            $count = $seatGroup['count'];
+            $price = $seatGroup['price'];
+
+            for ($i = 1; $i <= $count; $i++) {
+                $seats[] = [
+                    'screening_id' => $screeningId,
+                    'row' => $row,
+                    'number' => $i,
+                    'price' => $price,
+                    'is_reserved' => false,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+        }
+
+        Seat::insert($seats);
     }
 
     /**

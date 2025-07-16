@@ -13,8 +13,8 @@ class HallResource extends JsonResource
                 'id'              => $this->id,
                 'cinema_id'       => $this->cinema_id,
                 'name'            => $this->name,
-                'seat_map_json'   => json_decode($this->seat_map_json),
-                'created_at'      => $this->created_at->toDateTimeString(),
+                'seat_map_json'   => $this->seat_map_json,
+                'created_at'      => $this->created_at,
             ];
         }
 }

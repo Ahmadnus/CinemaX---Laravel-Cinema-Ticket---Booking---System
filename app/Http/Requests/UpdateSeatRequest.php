@@ -22,9 +22,10 @@ class UpdateSeatRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'seat_ids'    => 'required|array|min:1',
-            'seat_ids.*'  => 'integer|exists:seats,id',
-            'is_reserved' => 'required|boolean',
+            'seats' => 'required|array|min:1',
+            'seats.*.row' => 'required|string|max:5',
+            'seats.*.count' => 'required|integer|min:1',
+            'seats.*.price' => 'required|numeric|min:0',
         ];
     }
 }
