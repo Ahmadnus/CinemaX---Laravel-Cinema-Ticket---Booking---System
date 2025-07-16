@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Screening;
 use App\Models\Seat;
 
 class SeatService
@@ -29,6 +30,17 @@ class SeatService
      */
     public function createSeats(int $screeningId, array $seatsData): void
     {
+        $screening = Screening::with('hall')->findOrFail($screeningId);
+        $hallCapacity = $screening->hall->capacity;
+
+        $existingSeatCount = Seat::where('screening_id', $screeningId)->count();
+
+        $newSeatsCount = collect($seatsData)->sum('count');
+
+        if ($existingSeatCount + $newSeatsCount > $hallCapacity) {
+            throw new \Exception(trans('Total seats exceed the hall capacity.'));
+        }
+
         $seats = [];
 
         foreach ($seatsData as $seatGroup) {
@@ -51,7 +63,6 @@ class SeatService
 
         Seat::insert($seats);
     }
-
     /**
      * تحديث حالة حجز مقاعد (محجوزة / متاحة)
      *

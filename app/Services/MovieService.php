@@ -1,56 +1,83 @@
 <?php
 
 namespace App\Services;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use App\Models\Movie;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class MovieService
 {
-    /**
-     * Create a new class instance.
-     */
     public function createMovie(array $data): Movie
 {
-    $movie = Movie::create($data);
+    // تحقق إذا كان الفيلم موجود مسبقاً
+    $exists = DB::table('movie_translations')
+        ->whereIn('title', [
+            $data['en']['title'],
+            $data['ar']['title']
+        ])
+        ->exists();
 
-    // Poster from URL
+    if ($exists) {
+        throw ValidationException::withMessages([
+            'title' => [trans('A movie with the same title already exists.')],
+        ]);
+    }
+
+    $movie = new Movie();
+
+    $movie->translateOrNew('en')->title = $data['en']['title'];
+    $movie->translateOrNew('ar')->title = $data['ar']['title'];
+    $movie->translateOrNew('en')->description = $data['en']['description'];
+    $movie->translateOrNew('ar')->description = $data['ar']['description'];
+
+    $movie->release_date = $data['release_date'];
+    $movie->rating = $data['rating'];
+    $movie->save();
+
     if (!empty($data['poster_url'])) {
         $movie->addMediaFromUrl($data['poster_url'])->toMediaCollection('posters');
     }
 
-    // Trailer from URL (لو كان عندك رابط فيديو مثلاً)
+    return $movie;
+}
+
+public function updateMovie(int $id, array $data): Movie
+{
+    $movie = Movie::findOrFail($id);
+
+    $movie->translateOrNew('en')->title = $data['en']['title'];
+    $movie->translateOrNew('ar')->title = $data['ar']['title'];
+
+    $movie->translateOrNew('en')->description = $data['en']['description'];
+    $movie->translateOrNew('ar')->description = $data['ar']['description'];
+
+    $movie->release_date = $data['release_date'];
+    $movie->rating = $data['rating'];
+    $movie->genre = $data['genre'];
+    $movie->language = $data['language'];
+    $movie->duration_min = $data['duration_min'];
+    $movie->save();
+
+    // Poster
+    if (!empty($data['poster_url'])) {
+        $movie->clearMediaCollection('posters');
+        $movie->addMediaFromUrl($data['poster_url'])->toMediaCollection('posters');
+    }
+
+    // Trailer
     if (!empty($data['trailer_url'])) {
+        $movie->clearMediaCollection('trailers');
         $movie->addMediaFromUrl($data['trailer_url'])->toMediaCollection('trailers');
     }
 
     return $movie;
 }
-    public function updateMovie(int $id, array $data): Movie
-    {
-        $movie = Movie::findOrFail($id);
-        $movie->update($data);
-
-        // Replace poster if new one provided
-        if (!empty($data['poster_url']) && file_exists($data['poster_url'])) {
-            $movie->clearMediaCollection('posters');
-            $movie->addMedia($data['poster_url'])->toMediaCollection('posters');
-        }
-
-        // Replace trailer if new one provided
-        if (!empty($data['trailer_url']) && file_exists($data['trailer_url'])) {
-            $movie->clearMediaCollection('trailers');
-            $movie->addMedia($data['trailer_url'])->toMediaCollection('trailers');
-        }
-
-        return $movie;
-    }
 
     public function deleteMovie(int $id): bool
     {
         $movie = Movie::findOrFail($id);
 
-        // Delete media
         $movie->clearMediaCollection('posters');
         $movie->clearMediaCollection('trailers');
 
@@ -61,31 +88,27 @@ class MovieService
     {
         return Movie::with(['media'])->findOrFail($id);
     }
+
     public function getPaginatedMovies(array $filters = [], int $perPage = 10)
     {
         $query = Movie::query();
 
-        // 🔍 بحث بالعنوان
         if (!empty($filters['search'])) {
-            $query->where('title', 'like', '%' . $filters['search'] . '%');
+            $query->whereTranslationLike('title', '%' . $filters['search'] . '%');
         }
 
-        // 🎯 فلترة حسب النوع
         if (!empty($filters['genre'])) {
             $query->where('genre', $filters['genre']);
         }
 
-        // 🈯 فلترة حسب اللغة
         if (!empty($filters['language'])) {
             $query->where('language', $filters['language']);
         }
 
-        // 📅 فلترة حسب سنة الإصدار
         if (!empty($filters['year'])) {
             $query->whereYear('release_date', $filters['year']);
         }
 
-        // 🔃 ترتيب
         if (!empty($filters['sort_by'])) {
             $direction = $filters['direction'] ?? 'asc';
             $query->orderBy($filters['sort_by'], $direction);
@@ -93,62 +116,65 @@ class MovieService
             $query->latest();
         }
 
-        return $query->paginate($perPage);
+        return $query->paginate($perPage)->withQueryString();
     }
 
-    public function fetchMovieDetailsById(int $tmdbId): ?array
-{
-    $apiKey = config('services.tmdb.key');
+    public function fetchMovieDetailsById(int $tmdbId, string $locale = 'en'): ?array
+    {
+        $apiKey = config('services.tmdb.key');
+        $language = $locale === 'ar' ? 'ar-SA' : 'en-US';
 
-    $response = Http::get("https://api.themoviedb.org/3/movie/{$tmdbId}", [
-        'api_key' => $apiKey,
-        'language' => 'en-US',
-    ]);
+        $response = Http::get("https://api.themoviedb.org/3/movie/{$tmdbId}", [
+            'api_key' => $apiKey,
+            'language' => $language,
+        ]);
 
-    if ($response->failed()) {
-        return null;
-    }
+        if ($response->failed()) {
+            return null;
+        }
 
-    $movie = $response->json();
+        $movie = $response->json();
 
-    return [
-        'title' => $movie['title'],
-        'description' => $movie['overview'],
-        'poster_url' => $movie['poster_path']
-            ? 'https://image.tmdb.org/t/p/w500' . $movie['poster_path']
-            : null,
-        'release_date' => $movie['release_date'],
-        'rating' => $movie['vote_average'],
-    ];
-}
-public function searchMoviesFromTMDb(string $query): array
-{
-    $apiKey = config('services.tmdb.key');
-
-    $response = Http::get("https://api.themoviedb.org/3/search/movie", [
-        'api_key' => $apiKey,
-        'query'   => $query,
-        'language' => 'en-US',
-        'include_adult' => false,
-        'page' => 1,
-    ]);
-
-    if ($response->failed() || empty($response['results'])) {
-        return [];
-    }
-
-    return collect($response['results'])->map(function ($movie) {
         return [
-            'tmdb_id' => $movie['id'],
             'title' => $movie['title'],
-            'original_title' => $movie['original_title'],
-            'overview' => $movie['overview'],
-            'release_date' => $movie['release_date'],
-            'rating' => $movie['vote_average'],
+            'description' => $movie['overview'],
             'poster_url' => $movie['poster_path']
                 ? 'https://image.tmdb.org/t/p/w500' . $movie['poster_path']
                 : null,
+            'release_date' => $movie['release_date'],
+            'rating' => $movie['vote_average'],
+            'locale' => $locale,
         ];
-    })->toArray();
-}
+    }
+
+    public function searchMoviesFromTMDb(string $query): array
+    {
+        $apiKey = config('services.tmdb.key');
+
+        $response = Http::get("https://api.themoviedb.org/3/search/movie", [
+            'api_key' => $apiKey,
+            'query'   => $query,
+            'language' => 'en-US',
+            'include_adult' => false,
+            'page' => 1,
+        ]);
+
+        if ($response->failed() || empty($response['results'])) {
+            return [];
+        }
+
+        return collect($response['results'])->map(function ($movie) {
+            return [
+                'tmdb_id' => $movie['id'],
+                'title' => $movie['title'],
+                'original_title' => $movie['original_title'],
+                'overview' => $movie['overview'],
+                'release_date' => $movie['release_date'],
+                'rating' => $movie['vote_average'],
+                'poster_url' => $movie['poster_path']
+                    ? 'https://image.tmdb.org/t/p/w500' . $movie['poster_path']
+                    : null,
+            ];
+        })->toArray();
+    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Screening;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SeatRequest extends FormRequest
@@ -27,4 +28,6 @@ class SeatRequest extends FormRequest
         'seats.*.count' => 'required|integer|min:1',
         'seats.*.price' => 'required|numeric|min:0',
     ];
-}}
+
+}
+}
